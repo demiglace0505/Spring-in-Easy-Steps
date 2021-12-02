@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans.xsd
+    http://www.springframework.org/schema/context
+    http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<bean name="customer" p:id="20"
+		class="com.demiglace.spring.springcore.map.Customer">
+		<property name="products">
+			<map>
+				<!--both key and value as attribute -->
+				<entry key="100" value="iPhone" />
+				<!--key as attribute and value as element -->
+				<entry key="200">
+					<value>iPad</value>
+				</entry>
+				<!--key as element and value as attribute -->
+				<entry value="Macbook Pro">
+					<key>
+						<value>300</value>
+					</key>
+				</entry>
+				<!--both key and value as element -->
+				<entry>
+					<key>
+						<value>400</value>
+					</key>
+					<value>Macbook Air</value>
+				</entry>
+			</map>
+		</property>
+	</bean>
+
+</beans>
