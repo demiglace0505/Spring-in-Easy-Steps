@@ -402,7 +402,7 @@ To enable all annotations, we can add the following inside `<beans>` of our XML
 
 #### Dependency Check
 
-We can make the id field of a class mandatory using the **@Required** annotation. We attach this annotation to the setter method.
+Using dependency check, we can ensure that an object has dependencies that are required. We can make the id field of a class mandatory using the **@Required** annotation. We attach this annotation to the setter method.
 
 ```java
 	@Required
@@ -419,7 +419,7 @@ We then need to configure the config XML file to include the **@Required** anota
 	<bean class="org.springframework.beans.factory.annotation.RequiredAnnotationBeanPostProcessor"></bean>
 ```
 
-Once done, when we try to run the program, we get the following error:
+Once done, when we try to run the program, we get the following BeanInitializationException error:
 
 ```
 Property 'id' is required for bean 'prescription'
@@ -427,7 +427,7 @@ Property 'id' is required for bean 'prescription'
 
 #### Inner Beans
 
-In the example below, we have the following classes Employee and Address
+We use inner beans to configure and define dependencies of a bean within another bean. In the example below, we have the following classes Employee and Address.
 
 ```java
 public class Employee {
