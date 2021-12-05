@@ -397,3 +397,114 @@ To enable all annotations, we can add the following inside `<beans>` of our XML
 ```xml
 <context:annotation-config />
 ```
+
+## Dependency Check, Inner Beans and Scopes
+
+#### Dependency Check
+
+We can make the id field of a class mandatory using the **@Required** annotation. We attach this annotation to the setter method.
+
+```java
+	@Required
+	public void setId(int id) {
+		this.id = id;
+	}
+```
+
+We then need to configure the config XML file to include the **@Required** anotation
+
+```xml
+	<bean class="com.demiglace.spring.springcore.dependencycheck.Prescription" name="prescription">
+	</bean>
+	<bean class="org.springframework.beans.factory.annotation.RequiredAnnotationBeanPostProcessor"></bean>
+```
+
+Once done, when we try to run the program, we get the following error:
+
+```
+Property 'id' is required for bean 'prescription'
+```
+
+#### Inner Beans
+
+In the example below, we have the following classes Employee and Address
+
+```java
+public class Employee {
+	private int id;
+	private Address address;
+}
+```
+
+```java
+public class Address {
+	private int hno;
+	private String street;
+	private String city;
+}
+```
+
+We can set up Address as the inner bean for Employee using the property tag.
+
+```xml
+	<bean class="com.demiglace.spring.springcore.innerbeans.Employee"
+		name="employee" p:id="123">
+		<property name="address">
+			<bean class="com.demiglace.spring.springcore.innerbeans.Address"
+				name="address" p:hno="300" p:street="Doge St" p:city="Doge city">
+			</bean>
+		</property>
+	</bean>
+```
+
+To test, we use the folowing Test class:
+
+```java
+public class Test {
+	public static void main(String[] args) {
+		ApplicationContext context = new ClassPathXmlApplicationContext(
+				"com/demiglace/spring/springcore/innerbeans/config.xml");
+		Employee employee = (Employee) context.getBean("employee");
+		System.out.println(employee);
+	}
+}
+```
+
+#### Bean Scopes
+
+Scope refers to the availability of the object in the container. It can also be referred to as the number of objects created in the container of a particular bean type. There are five possible values. By default, Spring creates singleton.
+
+> singleton
+> prototype
+> request
+> session
+> globalsession
+
+The previous config.xml from inner beans will yield a singleton type. This is proved when calling the employee object twice, wherein both will have the same hashCode.
+
+```java
+public class Test {
+	public static void main(String[] args) {
+		ApplicationContext context = new ClassPathXmlApplicationContext(
+				"com/demiglace/spring/springcore/innerbeans/config.xml");
+		Employee employee = (Employee) context.getBean("employee");
+		System.out.println(employee.hashCode());
+
+		Employee employee2 = (Employee) context.getBean("employee");
+		System.out.println(employee2.hashCode());
+	}
+}
+```
+
+Configuring the bean's scope as prototype will cause the hashCodes to no longer match
+
+```xml
+	<bean class="com.demiglace.spring.springcore.innerbeans.Employee"
+		name="employee" p:id="123" scope="prototype">
+		<property name="address">
+			<bean class="com.demiglace.spring.springcore.innerbeans.Address"
+				name="address" p:hno="300" p:street="Doge St" p:city="Doge city">
+			</bean>
+		</property>
+	</bean>
+```
