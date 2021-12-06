@@ -508,3 +508,251 @@ Configuring the bean's scope as prototype will cause the hashCodes to no longer 
 		</property>
 	</bean>
 ```
+
+## Constructor Injection
+
+Spring supports creating of objects using parameterized constructs. We use the `constructor-arg` tags for this. We first define a constructor in our Employee class
+
+```java
+public class Employee {
+	private int id;
+	private Address address;
+
+	Employee(int id, Address address){
+		this.address = address;
+		this.id = id;
+	}
+```
+
+We then configure our beans in the config.xml. We use `constructor-arg` to inject constructors and we can either use value tags or ref, in the case of a reference.
+
+```xml
+	<bean
+		class="com.demiglace.spring.springcore.constructorinjection.Address"
+		name="address" p:hno="123" p:street="Doge St" p:city="Doge city">
+	</bean>
+
+	<bean
+		class="com.demiglace.spring.springcore.constructorinjection.Employee"
+		name="employee">
+		<constructor-arg>
+			<value>123</value>
+		</constructor-arg>
+		<constructor-arg>
+			<ref bean="address" />
+		</constructor-arg>
+	</bean>
+```
+
+We then write out the Test class
+
+```java
+public class Test {
+	public static void main(String[] args) {
+		ApplicationContext context = new ClassPathXmlApplicationContext(
+				"com/demiglace/spring/springcore/constructorinjection/config.xml");
+		Employee employee = (Employee) context.getBean("employee");
+		System.out.println(employee);
+	}
+}
+```
+
+Aside from using the `value` tags, we can also use them as an element, and the ref tag can be used as an attribute.
+
+```xml
+	<bean
+		class="com.demiglace.spring.springcore.constructorinjection.Employee"
+		name="employee">
+		<constructor-arg value="123">
+		</constructor-arg>
+		<constructor-arg ref="address">
+		</constructor-arg>
+	</bean>
+```
+
+We can also use C schemas.
+
+```xml
+	<bean
+		class="com.demiglace.spring.springcore.constructorinjection.Employee"
+		name="employee" c:id="123" c:address-ref="address">
+	</bean>
+```
+
+#### Ambiguity Problem
+
+We can avoid type ambuiguity by using the type, index and name attributes.
+
+```java
+public class Addition {
+	Addition(int a, double b) {
+		System.out.println("Inside constructor");
+		System.out.println(a);
+		System.out.println(b);
+	}
+}
+```
+
+```xml
+	<bean class="com.demiglace.spring.springcore.ambiguity.Addition" name="addition">
+		<constructor-arg value="20.3" type="double" index="1">
+		</constructor-arg>
+		<constructor-arg value="10" type="int" index="0">
+		</constructor-arg>
+	</bean>
+```
+
+## Bean Externalization
+
+We can set up properties from an external file using Bean Externalization. We first create the properties file `database.properties`
+
+```
+dbServer=dogeserver
+dbPort=420
+dbUser=test
+dbPass=test
+```
+
+We then setup the beans in our config.xml. We import properties from the Spring context namespace
+
+```xml
+	<context:property-placeholder
+		location="com/demiglace/spring/springcore/propertyplaceholder/database.properties" />
+
+	<bean
+		class="com.demiglace.spring.springcore.propertyplaceholder.MyDAO"
+		name="myDAO">
+		<constructor-arg>
+			<value>${dbServer}</value>
+		</constructor-arg>
+	</bean>
+```
+
+## Auto-Wiring
+
+The linking of the dependent and dependency bean can be done automatically by the Spring Container. This can be done in two ways: by XML or by Annotations.
+
+#### XML Auto-Wiring
+
+The following configuration makes use of the **byType** autowiring. When Spring creates the Employee bean, it will go to the Employee class and search for the object dependencies. In this case, it will find address as one of the dependencies. Spring will then determine the type, which is Address and searches for the bean with class Address and inject that bean into the Employee bean. **byName** on the other hand, works by searching for a bean with the same name of the reference variable defined, in this case _address_
+
+```xml
+	<bean
+		class="com.demiglace.spring.springcoreadvanced.autowiring.Address"
+		name="address" p:hno="123" p:street="Doge St" p:city="Doge city">
+	</bean>
+
+	<bean
+		class="com.demiglace.spring.springcoreadvanced.autowiring.Employee"
+		name="employee" autowire="byType">
+	</bean>
+```
+
+To use auto wiring by constructor injection, we need to provide a parameterized constructor in our Java class.
+
+```java
+public class Employee {
+	private Address address;
+
+	Employee(Address address) {
+		this.address = address;
+	}
+```
+
+```xml
+	<bean
+		class="com.demiglace.spring.springcoreadvanced.autowiring.Address"
+		name="address" p:hno="123" p:street="Doge St" p:city="Doge city">
+	</bean>
+
+	<bean
+		class="com.demiglace.spring.springcoreadvanced.autowiring.Employee"
+		name="employee" autowire="constructor">
+	</bean>
+```
+
+#### Annotation Auto-Wiring
+
+We can setup auto-wiring for the setters by using the **@Autowired** annotation. We need to make sure to include `<context:annotation-config/>` in our XML.
+
+```java
+	@Autowired
+	public void setAddress(Address address) {
+		this.address = address;
+	}
+```
+
+Aside from using at the setter level, we can also use it on a field level
+
+```java
+	@Autowired
+	private Address address;
+```
+
+And also at a constructor level, which will make use of constructor injection.
+
+```java
+	@Autowired
+	Employee(Address address) {
+		this.address = address;
+	}
+```
+
+#### @Qualifier Annotation
+
+The **@Qualifier** annotation tells the Spring Container that it should look for a bean with the given name and then inject that bean.
+
+```java
+public class Employee {
+	@Autowired
+	@Qualifier("address123")
+	private Address address;
+
+```
+
+```xml
+  <context:annotation-config/>
+
+	<bean
+		class="com.demiglace.spring.springcoreadvanced.autowiring.annotations.Address"
+		name="address123" p:hno="123" p:street="Doge St" p:city="Doge city">
+	</bean>
+
+	<bean
+		class="com.demiglace.spring.springcoreadvanced.autowiring.annotations.Address"
+		name="address567" p:hno="567" p:street="Doge St" p:city="Doge city">
+	</bean>
+
+	<bean
+		class="com.demiglace.spring.springcoreadvanced.autowiring.annotations.Employee"
+		name="employee">
+	</bean>
+```
+
+## Standalone Collections
+
+To implement standalone collections, we use the util schema namespace. We import the namespace to the XML
+
+```xml
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="
+   	http://www.springframework.org/schema/util
+    http://www.springframework.org/schema/util/spring-util.xsd
+    ">
+
+	<util:list list-class="java.util.LinkedList"
+		id="productNames">
+		<value>Mac Book</value>
+		<value>iPhone</value>
+	</util:list>
+
+	<bean
+		class="com.demiglace.spring.springcoreadvanced.standalone.collections.ProductsList"
+		name="productslist">
+		<property name="productNames">
+			<ref bean="productNames" />
+		</property>
+	</bean>
+</beans>
+```
