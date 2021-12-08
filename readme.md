@@ -756,3 +756,206 @@ To implement standalone collections, we use the util schema namespace. We import
 	</bean>
 </beans>
 ```
+
+## Stereotype Annotations
+
+We can use Stereotype Annotations to create and inject objects. When using the **@Component** annotation, Spring will automatically create an object with a bean name the same as the class, in camel-case. We can change this by providing a value in the Component annotation, in this case, inst.
+
+We can also use the **@Scope** annotation to specificy the scope of an object. By default, the Spring Container singleton scope.
+
+In the `base-package` attribute of the component-scan context, we provide the package which the Spring Container needs to scan for the classes marked with the **@Component** annotation. It is important to note that the component-scan context element already internally enables the annotation config.
+
+```java
+@Component("inst")
+@Scope("prototype")
+public class Instructor {
+	@Value("10")
+	private int id;
+	@Value("Doge")
+	private String name;
+```
+
+```xml
+	<context:component-scan
+		base-package="com.demiglace.spring.springcoreadvanced.stereotype.annotations">
+	</context:component-scan>
+```
+
+To inject collection types as value, we use the util schema in the XML configuration. Then once we have assigned an id, we use the **@Value** annotation.
+
+```java
+@Component("inst")
+@Scope("prototype")
+public class Instructor {
+
+	@Value("#{topics}")
+	private List<String> topics;
+```
+
+```xml
+	<context:component-scan
+		base-package="com.demiglace.spring.springcoreadvanced.stereotype.annotations">
+	</context:component-scan>
+
+	<util:list list-class="java.util.LinkedList" id="topics">
+		<value>Math</value>
+		<value>Science</value>
+		<value>English</value>
+	</util:list>
+```
+
+For object types, we can inject using autowiring **@Autowired**.
+
+```java
+	@Autowired
+	private Profile profile;
+```
+
+## Spring Expression Language
+
+The Spring Expression Language supports parsing and executing expressions with the help of @Value annotation. The Spring Expression Language is denoted by `#{}`. To invoke a static method inside an expression we use the syntax `T(class).method(param)`
+
+```java
+	@Value("#{T(java.lang.Integer).MIN_VALUE}")
+	private int id;
+	@Value("#{'Doge'.toUpperCase()}")
+	private String name;
+```
+
+We can also use the **new** operator.
+
+```java
+	@Value("#{new java.lang.String('DoGe')}")
+	private String name;
+```
+
+## Injecting Interfaces
+
+Consider the following structure: OrderBOImpl _is a_ OrderBO and OrderDAOImpl _is a_ OrderDAO. OrderBO _has a_ OrderDAO. We first create the POJI/POJO.
+
+```java
+public interface OrderDAO {
+	void createOrder();
+}
+```
+
+```java
+public class OrderDAOImpl implements OrderDAO {
+	@Override
+	public void createOrder() {
+		System.out.println("Inside OrderDAO createOrder()");
+	}
+
+}
+```
+
+```java
+public interface OrderBO {
+	void placeOrder();
+}
+```
+
+```java
+public class OrderBOImpl implements OrderBO {
+	private OrderDAO dao;
+
+	@Override
+	public void placeOrder() {
+		System.out.println("Inside OrderBO placeOrder()");
+		dao.createOrder();
+	}
+}
+```
+
+We then proceed on configuring the XML. We first define the dependency bean, which is OrderDAOImpl. It is important to note that we always provide the implementation in the bean, and use the interface in the java class. Spring uses runtime polymorphism and injects any implementation class into the interface object.
+
+```xml
+	<bean class="com.demiglace.spring.springcoreadvanced.injecting.interfaces.OrderDAOImpl" name="dao">
+	</bean>
+
+	<bean class="com.demiglace.spring.springcoreadvanced.injecting.interfaces.OrderBOImpl" name="bo">
+		<property name="dao" ref="dao"></property>
+	</bean>
+```
+
+The test output will be
+
+```
+Inside OrderBO placeOrder()
+Inside OrderDAOImpl createOrder()
+```
+
+Spring provides loose coupling in our application through runtime polymorphism, which means that we can inject different implementations of the dependencies at runtime without changing our dependent classes. For example, we can create a new class that implements OrderDAO
+
+```java
+public class OrderDAOImpl2 implements OrderDAO {
+	@Override
+	public void createOrder() {
+		System.out.println("Inside OrderDAOImpl2 createOrder()");
+	}
+}
+
+```
+
+We just need to create a new bean in our config.xmland change the ref in the dependent bean
+
+```xml
+	<bean
+		class="com.demiglace.spring.springcoreadvanced.injecting.interfaces.OrderDAOImpl"
+		name="dao">
+	</bean>
+
+	<bean
+		class="com.demiglace.spring.springcoreadvanced.injecting.interfaces.OrderDAOImpl2"
+		name="dao2">
+	</bean>
+
+	<bean
+		class="com.demiglace.spring.springcoreadvanced.injecting.interfaces.OrderBOImpl"
+		name="bo">
+		<property name="dao" ref="dao2"></property>
+	</bean>
+```
+
+The test output will be
+
+```
+Inside OrderBO placeOrder()
+Inside OrderDAOImpl2 createOrder()
+```
+
+#### Using Annotations
+
+We can also use annotations. We tuse the **@Qualifier** annotation to tell Spring which class to inject in case there are multiple classes that implements an interface. In this case, Spring will inject the bean _dao_.
+
+```java
+@Component("bo")
+public class OrderBOImpl implements OrderBO {
+	@Autowired
+  @Qualifier("dao")
+	private OrderDAO dao;
+```
+
+```java
+@Component("dao")
+public class OrderDAOImpl implements OrderDAO {
+```
+
+```java
+@Component("dao2")
+public class OrderDAOImpl2 implements OrderDAO {
+```
+
+and in config.xml
+
+```xml
+<context:component-scan
+		base-package="com.demiglace.spring.springcoreadvanced.injecting.interfaces"></context:component-scan>
+```
+
+the test output will be
+
+```
+Inside OrderBO placeOrder()
+Inside OrderDAOImpl createOrder()
+```
