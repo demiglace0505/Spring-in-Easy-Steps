@@ -959,3 +959,176 @@ the test output will be
 Inside OrderBO placeOrder()
 Inside OrderDAOImpl createOrder()
 ```
+
+## Spring JDBC
+
+When we use Java Database Connectivity to perform DB operations, we traditionally write a lot of boilerplate. Spring simplifies JDBC by providing the class **JDBCTemplate**, which is a combination of JDBC technology and the template design pattern. The template carries all the boilerplate. The JDBCTemplate in spring depends upon javax.sql.DataSource which is an interface that Spring provides an implementation in **DriverManagerDataSource**. The DriverManagerDataSource is responsible for creating the database connection and takes four parameters: driverClassName, url, username, password.
+
+To setup the project, we need the following maven dependencies
+
+> spring-context
+> spring-jdbc
+> mysql-connector-java
+
+We configure the driver manager data source and the JDBC template beans in the config XML.
+
+```xml
+	<bean
+		class="org.springframework.jdbc.datasource.DriverManagerDataSource"
+		name="dataSource" p:driverClassName="com.mysql.jdbc.Driver"
+		p:url="jdbc:mysql://localhost/mydb" p:username="root"
+		p:password="1234">
+	</bean>
+
+	<bean class="org.springframework.jdbc.core.JdbcTemplate"
+		name="jdbcTemplate" p:dataSource-ref="dataSource">
+	</bean>
+```
+
+We can test that the JdbcTemplate is connecting to our MySQL database by the following test method
+
+```java
+	public static void main(String[] args) {
+		ApplicationContext context = new ClassPathXmlApplicationContext("com/demiglace/spring/springjdbc/config.xml");
+		JdbcTemplate jdbcTemplate = (JdbcTemplate) context.getBean("jdbcTemplate");
+		String sql = "INSERT into employee values(?,?,?)";
+		int result = jdbcTemplate.update(sql, new Integer(1), "Doge", "Mr");
+		System.out.println("Number of records inserted are:" + result);
+	}
+```
+
+#### DTO and DAO
+
+We can then proceed on creating the DTO and DAO objects. We first create the DTO and once we have this entity, we'll create a DAO interface that will be implemented by a DAO class. The implementation of the DAO class will contain all the database code, and then will use the jdbcTemplate to perform the database operations.
+
+The DTO is the Employee class, Then the EMployeeDAO and its implementation
+
+```java
+public class Employee {
+	private int id;
+	private String firstName;
+	private String lastName;
+```
+
+```java
+public interface EmployeeDAO {
+	int create(Employee employee);
+}
+
+```
+
+```java
+public class EmployeeDAOImpl implements EmployeeDAO {
+	@Override
+	public int create(Employee employee) {
+		String sql = "INSERT into employee values(?,?,?)";
+		int result = jdbcTemplate.update(sql, employee.getId(), employee.getFirstName(), employee.getLastName());
+		return result;
+	}
+}
+```
+
+We then need to wire the configuration for EmployeeDAOImpl to use the JDBCTemplate.
+
+```xml
+	<bean
+		class="org.springframework.jdbc.datasource.DriverManagerDataSource"
+		name="dataSource" p:driverClassName="com.mysql.jdbc.Driver"
+		p:url="jdbc:mysql://localhost/mydb" p:username="root"
+		p:password="1234">
+	</bean>
+
+	<bean class="org.springframework.jdbc.core.JdbcTemplate"
+		name="jdbcTemplate" p:dataSource-ref="dataSource">
+	</bean>
+
+	<bean
+		class="com.demiglace.spring.springjdbc.employee.dao.impl.EmployeeDAOImpl"
+		name="employeeDAO">
+		<property name="jdbcTemplate">
+			<ref bean="jdbcTemplate"></ref>
+		</property>
+	</bean>
+```
+
+And finally the test class:
+
+```java
+	public static void main(String[] args) {
+		ApplicationContext context = new ClassPathXmlApplicationContext("com/demiglace/spring/springjdbc/employee/test/config.xml");
+		EmployeeDAO dao = (EmployeeDAO) context.getBean("employeeDAO");
+		Employee employee = new Employee();
+		employee.setId(2);
+		employee.setFirstName("Cate");
+		employee.setLastName("Mrs");
+		int result = dao.create(employee);
+		System.out.println("Number of records inserted are:" + result);
+	}
+```
+
+To summarize, the Spring container reads from the configuration file 3 beans: first is the EmployeeDAOImpl which needs the JdbcTemplate bean which then needs the dataSource bean. The Spring container will then create an instance of the Data Source using the information provided such as the driverClassName, username, password, and url. Spring then injects the dataSource bean into the JdbcTemplate bean which uses the JDBCTemplate object to inject into the employeeDAOImpl while creating an object of the employeeDAOImpl. We then create an Employee DTO and invoke the create method. In the create method, we are using the JDBCTemplate to execute the sql statement.
+
+#### Reading records
+
+There are two methods for doing a select query in JDBCTemplate: **queryForObject** and **query**. RowMapper is an interface from the Spring Framework that we need to implement when using these queries. It maps the JDBC Result Set that comes back into an object of a class that we create. We start by creating a RowMapper class. The integers passed into the getInt, getString method are the column number.
+
+```java
+public class EmployeeRowMapper implements RowMapper<Employee> {
+	@Override
+	public Employee mapRow(ResultSet rs, int rowNum) throws SQLException {
+		Employee emp = new Employee();
+		emp.setId(rs.getInt(1));
+		emp.setFirstName(rs.getString(2));
+		emp.setLastName(rs.getString(3));
+		return emp;
+	}
+}
+```
+
+We can then use this into our read method.
+
+```java
+	@Override
+	public Employee read(int id) {
+		String sql = "SELECT * from employee WHERE id=?";
+		EmployeeRowMapper rowMapper = new EmployeeRowMapper();
+		Employee employee = jdbcTemplate.queryForObject(sql, rowMapper, id);
+		return employee;
+	}
+```
+
+To read multiple records, we make use of the **query** method.
+
+```java
+	@Override
+	public List<Employee> read() {
+		String sql = "SELECT * from employee";
+		EmployeeRowMapper rowMapper = new EmployeeRowMapper();
+		List<Employee> result = jdbcTemplate.query(sql, rowMapper);
+		return result;
+	}
+```
+
+#### Auto-Wiring
+
+We can make use of the **@Component** and **@Autowired** annotations to auto-wire the jdbcTemplate. Instead of
+
+```xml
+	<bean
+		class="com.demiglace.spring.springjdbc.employee.dao.impl.EmployeeDAOImpl"
+		name="employeeDAO">
+		<property name="jdbcTemplate">
+			<ref bean="jdbcTemplate"></ref>
+		</property>
+	</bean>
+```
+
+We can use annotations in the POJO
+
+```java
+@Component("employeeDAO")
+public class EmployeeDAOImpl implements EmployeeDAO {
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+```
