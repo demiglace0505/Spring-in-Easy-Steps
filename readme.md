@@ -1132,3 +1132,158 @@ public class EmployeeDAOImpl implements EmployeeDAO {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 ```
+
+## Spring ORM
+
+In Spring ORM, we map every field in the class into a database column. The ORM will then automatically convert objects into database rows and vice versa. The ORM will provide the SQL on the fly so we don't need to write any SQL queries anymore. The Java EE standard for doing ORM is JPA, Java Persistence API. Hibernate is an example of an implementation of the JPA standard. Spring provides the **HibernateTemplate** to make it easy to use Hibernate.
+
+The design for an application that uses the HibernateTemplate will be similar to the following. An entity class which will be marked with all the annotations, the entityDAO interface which will have all the database code, and its corresponding entityDAOImpl which depends upon HibernateTemplate. The HiberNateTemplate uses the SessionFactory bean interface, which takes care of establishing the connection.
+
+#### Mapping an Entity to a Database table
+
+We can either use XML or Annotations to do ORM Mapping. There are four JPA annotations commonly used: **@Entity**, **@Table**, **@Id**, **@Column**. The @Entity annotation is used on the class itself. The @Id annotation is used on the field that will serve as a primary key. The @Table is optional and is only used if the database table name is different from the class name. The same goes for the @Column annotation.
+
+We start by creating the entity:
+
+```java
+@Entity
+@Table(name="product")
+public class Product {
+	@Id
+	@Column(name="id")
+	private int id;
+	@Column(name="name")
+	private String name;
+	@Column(name="description")
+	private String desc;
+	@Column(name="price")
+	private double price;
+```
+
+We then create a DAO interface and its implementation, which we autowire with the hibernateTemplate bean.
+
+```java
+public interface ProductDAO {
+	int create(Product product);
+}
+
+```
+
+```java
+@Component
+public class ProductDAOImpl implements ProductDAO {
+	@Autowired
+	HibernateTemplate hibernateTemplate;
+
+	@Override
+	public int create(Product product) {
+		return 0;
+	}
+}
+```
+
+We then configure the LocalSessionFactoryBean. This requires the following dependencies: the DataSource, HibernateProperties and list of entity classes. The configuration file looks like the following:
+
+```xml
+  <context:component-scan base-package="com.demiglace.spring.springorm.product.dao.impl"></context:component-scan>
+
+	<bean
+		class="org.springframework.jdbc.datasource.DriverManagerDataSource"
+		name="dataSource" p:driverClassName="com.mysql.jdbc.Driver"
+		p:url="jdbc:mysql://localhost/mydb" p:username="root"
+		p:password="1234">
+	</bean>
+
+	<bean
+		class="org.springframework.orm.hibernate5.LocalSessionFactoryBean"
+		name="sessionFactory" p:dataSource-ref="dataSource">
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+				<prop key="hibernate.show_sql">true</prop>
+			</props>
+		</property>
+		<property name="annotatedClasses">
+			<list>
+				<value>com.demiglace.spring.springorm.product.entity.Product</value>
+			</list>
+		</property>
+	</bean>
+
+	<bean class="org.springframework.orm.hibernate5.HibernateTemplate"
+		name="hibernateTemplate" p:sessionFactory-ref="sessionFactory">
+	</bean>
+```
+
+#### Transaction Manager
+
+When we execute multiple update statements, there are scenarios wherein we want either all of the transactions to succeed or none should succeed. This is done by the Transaction Manager using commit and rollback.
+
+Spring makes it easy to do transaction management by providing a TransactionManager. We first need to configure the HibernateTransactionManager bean and then add annotation support using the XML configuration. Finally, we will use the @Transactional annotation to our java methods.
+
+```xml
+<beans
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="
+    http://www.springframework.org/schema/tx
+    http://www.springframework.org/schema/tx/spring-tx.xsd
+    ">
+
+    <tx:annotation-driven/>
+
+	<bean class="org.springframework.orm.hibernate5.HibernateTemplate"
+		name="hibernateTemplate" p:sessionFactory-ref="sessionFactory">
+	</bean>
+
+	<bean
+		class="org.springframework.orm.hibernate5.HibernateTransactionManager"
+		name="transactionManager" p:sessionFactory-ref="sessionFactory">
+	</bean>
+</beans>
+```
+
+At this point, we can now implement the create, update and delete methods in our DAOImpl class.
+
+```java
+	@Override
+	@Transactional
+	public int create(Product product) {
+		Integer result = (Integer) hibernateTemplate.save(product);
+		return result;
+	}
+
+	@Override
+	@Transactional
+	public void update(Product product) {
+		hibernateTemplate.update(product);
+	}
+
+	@Override
+	@Transactional
+	public void delete(Product product) {
+		hibernateTemplate.delete(product);
+	}
+```
+
+#### Fetching Records
+
+To fetch a single record from the database, we can make use of the Hibernate Template **get** method. This method takes the return type as the first parameter, and for the second parameter, we pass into it the id.
+
+```java
+	@Override
+	public Product find(int id) {
+		Product product = hibernateTemplate.get(Product.class, id);
+		return product;
+	}
+```
+
+To fetch multiple records, we use the **loadAll** method of Hibernate Template.
+
+```java
+	@Override
+	public List<Product> findAll() {
+		List<Product> products = hibernateTemplate.loadAll(Product.class);
+		return products;
+	}
+```
