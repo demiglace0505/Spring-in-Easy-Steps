@@ -1182,7 +1182,7 @@ public class ProductDAOImpl implements ProductDAO {
 }
 ```
 
-We then configure the LocalSessionFactoryBean. This requires the following dependencies: the DataSource, HibernateProperties and list of entity classes. The configuration file looks like the following:
+We then configure the LocalSessionFactoryBean. This requires the following dependencies: the DataSource, HibernateProperties and list of entity classes. We pass a ref to the dataSource bean. For the hibernateProperties, we configured the dialect and show_sql. The dialect is responsible for generating the SQL commands and show_sql tells hibernate to log all queries on the console. The configuration file looks like the following:
 
 ```xml
   <context:component-scan base-package="com.demiglace.spring.springorm.product.dao.impl"></context:component-scan>
@@ -1287,3 +1287,310 @@ To fetch multiple records, we use the **loadAll** method of Hibernate Template.
 		return products;
 	}
 ```
+
+## Spring MVC
+
+Spring MVC is used to design dynamic web applications. It internally uses three design patterns: **Front Controller**, **Handler Mapper**, **View Resolver**.
+
+When an HTTP request is made by a client, the Dispatcher Servlet handles the incoming request, which is configured in web.xml. Once configured, the incoming request will be handled by the HandlerMapper which maps the incoming request into a controller which is a POJO class that we annotate with the @Controller annotation. Inside the controller class, we will implement a method which will create a model and view, which we finally return to the Dispatcher Servlet.
+
+There are 5 steps to create a Spring MVC Application:
+
+> Configure the Dispatcher Servlet
+> Create the spring configuration file
+> Configure the ViewResolver
+> Create the Controller class
+> Create the folder structure and the view (jsp page)
+
+#### Configuring the Dispatcher Servlet
+
+We configure the Dispatcher Servlet under **web.xml**
+
+```xml
+<web-app>
+  <display-name>Hello Spring MVC</display-name>
+  <servlet>
+  	<servlet-name>dispatcher</servlet-name>
+  	<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+  </servlet>
+
+  <servlet-mapping>
+  	<servlet-name>dispatcher</servlet-name>
+  	<url-pattern>/</url-pattern>
+  </servlet-mapping>
+</web-app>
+```
+
+#### Creating the Spring Configuration file
+
+We create a configuration XML under /webapp with the filename **dispatcher-servlet.xml**. The name of this file is based upon the name of our servlet, in this case, dispatcher.
+
+#### Configuring the ViewResolver
+
+The ViewResolver will be configured as a bean and it will resolve the prefix (location) and suffix (extension) for our view. We insert the following bean in our spring configuration file:
+
+```xml
+	<context:component-scan base-package="com.demiglace.spring.springmvc.controller"></context:component-scan>
+
+	<bean
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver"
+		name="viewResolver">
+		<property name="prefix">
+			<value>/WEB-INF/views/</value>
+		</property>
+		<property name="suffix">
+			<value>.jsp</value>
+		</property>
+	</bean>
+```
+
+#### Creating and Configuring the Controller
+
+The Controller class is responsible for taking a request and sending back a response.
+
+```java
+@Controller
+public class HelloController {
+	@RequestMapping("/hello")
+	public ModelAndView hello() {
+		ModelAndView modelAndView = new ModelAndView();
+		modelAndView.setViewName("hello");
+		return modelAndView;
+	}
+}
+```
+
+#### Creating the View
+
+We now create the jsp file under /WEB-INF/views/ directory
+
+```html
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="ISO-8859-1" />
+    <title>Hello</title>
+  </head>
+  <body>
+    <h1>Hello from Spring MVC</h1>
+  </body>
+</html>
+```
+
+We can then access the webpage at `http://localhost:8080/springmvc/hello`
+
+## Sending data from Controller to UI
+
+#### Sending primitive data types
+
+We send data from the controller to the UI using the **ModelAndView** object.
+
+```java
+public class HelloController {
+	@RequestMapping("/hello")
+	public ModelAndView hello() {
+		ModelAndView modelAndView = new ModelAndView();
+		modelAndView.setViewName("hello");
+
+		modelAndView.addObject("id", 123);
+		modelAndView.addObject("name", "demiglace");
+		modelAndView.addObject("salary", 10000);
+		return modelAndView;
+	}
+}
+```
+
+And in our jsp template:
+
+```jsp
+	<%
+	Integer id = (Integer) request.getAttribute("id");
+	String name = (String) request.getAttribute("name");
+	Integer salary = (Integer) request.getAttribute("salary");
+	out.println(id);
+	out.println(name);
+	out.println(salary);
+	%>
+```
+
+#### Sending Object data
+
+To send object data, we first create a class for our object
+
+```java
+public class Employee {
+	private int id;
+	private double salary;
+	private String name;
+}
+```
+
+We then create our Controller, which returns a ModelAndView object.
+
+```java
+@Controller
+public class ObjectController {
+	@RequestMapping("/readObject")
+	public ModelAndView sendObject() {
+		ModelAndView modelAndView = new ModelAndView();
+		modelAndView.setViewName("displayObject");
+
+		Employee employee = new Employee();
+		employee.setId(1234);
+		employee.setName("doge");
+		employee.setSalary(3000);
+		modelAndView.addObject("employee", employee);
+
+		return modelAndView;
+	}
+}
+```
+
+And we render once again to a new jsp page, this time called displayObject.jsp, which can be accessed via the endpoint `/readObject`.
+
+```jsp
+<%=request.getAttribute("employee")%>
+```
+
+#### Sending List data
+
+We start by creating the ListController and within it, we define a List of Employee objects.
+
+```java
+@Controller
+public class ListController {
+	@RequestMapping("/readList")
+	public ModelAndView sendList() {
+		ModelAndView modelAndView = new ModelAndView();
+		modelAndView.setViewName("displayList");
+
+		Employee employee = new Employee();
+		employee.setId(1);
+		employee.setName("doge");
+		employee.setSalary(3000);
+
+		Employee employee2 = new Employee();
+		employee2.setId(2);
+		employee2.setName("cate");
+		employee2.setSalary(2000);
+
+		ArrayList<Employee> employees = new ArrayList<Employee>();
+		employees.add(employee);
+		employees.add(employee2);
+
+		modelAndView.addObject("employees", employees);
+
+		return modelAndView;
+	}
+}
+```
+
+We then proceed on creating the view. We need to import the Employee class and also the List class. We then access this jsp page via /readList
+
+```jsp
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1" import="com.demiglace.spring.springmvc.dto.Employee,java.util.List" %>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>List</title>
+</head>
+<body>
+<%
+	List<Employee> employees = (List<Employee>) request.getAttribute("employees");
+	for(Employee e:employees) {
+		out.println(e.getId());
+		out.println(e.getName());
+		out.println(e.getSalary());
+	}
+%>
+</body>
+</html>
+
+```
+
+## Sending Data from UI to Controller
+
+We can send data from the UI to the controller in two ways: via HTML forms or by using Query Parameters. When we submit an HTML form, the Spring Container does 4 things:
+
+> Read data that is submitted
+> Converts data to the appropriate Java data type
+> Creates an object of the model class
+> Set the values and hand over to the controller
+
+#### Sending data via HTML forms
+
+We start by creating the User model
+
+```java
+public class User {
+	private int id;
+	private String name;
+	private String email;
+```
+
+We then proceed on creating the jsp page userReg.jsp
+
+```jsp
+<body>
+	<form action="registerUser" method="post">
+		<pre>
+	Id: <input type="text" name="id" />
+	Name: <input type="text" name="name" />
+	Email: <input type="text" name="email" />
+	<input type="submit" name="" register />
+	</pre>
+	</form>
+</body>
+```
+
+Afterwards, we create the controller UserController.java that will return the jsp page to the user. We also proceed on handling the incoming form data using **@ModelAttribute** annotation, which retrieves the object that the container creates on the fly.
+
+```java
+@Controller
+public class UserController {
+
+	@RequestMapping("registrationPage")
+	public ModelAndView showRegistrationPage() {
+		ModelAndView modelAndView = new ModelAndView();
+		modelAndView.setViewName("userReg");
+		return modelAndView;
+	}
+
+	@RequestMapping(value="registerUser", method=RequestMethod.POST)
+	public ModelAndView registerUser(@ModelAttribute("user") User user) {
+		System.out.println(user);
+		ModelAndView modelAndView = new ModelAndView();
+
+		modelAndView.addObject("user", user);
+		modelAndView.setViewName("regResult");
+		return modelAndView;
+	}
+}
+```
+
+In this case, once a user submits to the form, the user will be redirected to `/regResult` and over there, we can access the user object.
+
+#### Sending data using Request Parameters
+
+We can also send data to the controller by appending the data to the url. We can retrieve this data from our controller using the **@RequestParam** annotation.
+
+We start by creating the controller.
+
+```java
+@Controller
+public class RequestParamsController {
+	@RequestMapping("/showData")
+	public ModelAndView showData(@RequestParam("id") int id, @RequestParam("name") String name,
+			@RequestParam(value = "sal", required = false, defaultValue = "60") double salary) {
+		System.out.println(id);
+		System.out.println(name);
+		System.out.println(salary);
+		return new ModelAndView("userReg");
+	}
+}
+```
+
+We can verify that this works by going to `http://localhost:8080/springmvc/showData?id=123&name=John&sal=4000` and verifying that the parameters are logged into the console.
