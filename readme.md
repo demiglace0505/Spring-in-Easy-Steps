@@ -1594,3 +1594,392 @@ public class RequestParamsController {
 ```
 
 We can verify that this works by going to `http://localhost:8080/springmvc/showData?id=123&name=John&sal=4000` and verifying that the parameters are logged into the console.
+
+#### Using ModelMap and String View
+
+We can use ModelMap and String instead of ModelAndView. This results to a simpler code.
+
+```java
+@Controller
+public class UserController {
+
+	@RequestMapping("registrationPage")
+	public String showRegistrationPage() {
+		return "userReg";
+	}
+
+	@RequestMapping(value="registerUser", method=RequestMethod.POST)
+	public String registerUser(@ModelAttribute("user") User user, ModelMap model) {
+		System.out.println(user);
+		model.addAttribute("user", user);
+		return "regResult";
+	}
+}
+```
+
+## Spring MVC and ORM
+
+We can implement the user registration use case using Spring MVC and ORM with the following steps:
+
+1. Create the Maven project
+2. Configure the DispatcherServlet by creating web.xml
+3. Configure Spring dispatcher-servlet.xml within which we will configure HibernateTemplate, SessionFactory, DataSource, ViewResolver
+4. Coding: Create the Model, DAL (Data Access Layer), Services Layer, Controller Layer
+
+Before proceeding, we first start by creating the User Table in the database.
+
+```
+net start MySQL80
+```
+
+```sql
+use mydb;
+create table user(id int,name varchar(20), email varchar(30));
+select * from user;
+```
+
+#### Creating the Maven Project
+
+We use the maven-archetype-webapp artifact. We then proceed on adding Apache Tomcat as a targeted runtime. We use the following dependencies in our pom.xml:
+
+> spring-webmvc
+> spring-orm
+> hibernate-core
+> mysql-connector-java
+
+```xml
+	<properties>
+		<springframework.version>4.3.6.RELEASE</springframework.version>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+			<version>${springframework.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>${springframework.version}</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.hibernate/hibernate-core -->
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-core</artifactId>
+			<version>5.6.2.Final</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
+		<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>8.0.27</version>
+		</dependency>
+
+
+
+	</dependencies>
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.2</version>
+					<configuration>
+						<source>1.8</source>
+						<target>1.8</target>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-maven-plugin</artifactId>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-war-plugin</artifactId>
+					<version>3.3.1</version>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
+```
+
+#### Updating web.xml
+
+The following will be the contents of `/WEB-INF/views/web.xml`. The following configuration will look for a `dispatcher-servlet.xml` file under WEB-INF.
+
+```xml
+<web-app>
+  <display-name>Archetype Created Web Application</display-name>
+
+  <servlet>
+  	<servlet-name>dispatcher</servlet-name>
+  	<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+  </servlet>
+
+  <servlet-mapping>
+  	<servlet-name>dispatcher</servlet-name>
+  	<url-pattern>/</url-pattern>
+  </servlet-mapping>
+</web-app>
+```
+
+#### Creating the Spring Configuration
+
+We start by creating the `dispatcher-servlet.xml`. The important things to note here are the beans **HibernateTemplate** which will be used for the DAO class, which we autowire. This HibernateTemplate depends on the **LocalSessionFactoryBean** from Spring, which needs a _dataSource_ that is configured to with the _Driver_ to connect to mysql. Other important properties are the **MySQLDialect**. We also tell hibernate our model classes with the **annotatedClasses** property. The **InternalResourceViewResolver** bean class from Spring is the one responsible for resolving the complete view name using the prefix (location) and suffix(extension).
+
+```xml
+<context:component-scan base-package="com.demiglace.spring.springmvcorm.user"></context:component-scan>
+
+<bean
+		class="org.springframework.jdbc.datasource.DriverManagerDataSource"
+		name="dataSource" p:driverClassName="com.mysql.jdbc.Driver"
+		p:url="jdbc:mysql://localhost/mydb" p:username="root"
+		p:password="1234">
+	</bean>
+
+	<bean
+		class="org.springframework.orm.hibernate5.LocalSessionFactoryBean"
+		name="sessionFactory" p:dataSource-ref="dataSource">
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+				<prop key="hibernate.show_sql">true</prop>
+			</props>
+		</property>
+		<property name="annotatedClasses">
+			<list>
+				<value>com.demiglace.spring.springmvcorm.user.entity.User</value>
+			</list>
+		</property>
+	</bean>
+
+	<bean class="org.springframework.orm.hibernate5.HibernateTemplate"
+		name="hibernateTemplate" p:sessionFactory-ref="sessionFactory">
+	</bean>
+
+	<bean
+		class="org.springframework.orm.hibernate5.HibernateTransactionManager"
+		name="transactionManager" p:sessionFactory-ref="sessionFactory">
+	</bean>
+
+  <bean
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver"
+		name="viewResolver">
+		<property name="prefix">
+			<value>/WEB-INF/jsps/</value>
+		</property>
+		<property name="suffix">
+			<value>.jsp</value>
+		</property>
+	</bean>
+```
+
+#### Coding
+
+In this section, we will be working with 3 layers: DAL, Services, and Controller layer. The DAL will have the DAO, while the Services layer will contain the business logic. The Controller layer will use the methods provided by the services layer.
+
+##### DAL
+
+We start by creating the **User** model class, which we mark with **@Entity** annotations to make it an entity, so that hibernate can map the class to a database row and the fields to a database column. We mark the id field with **@Id** annotation to mark it as the primary key. The Comparable interface is used so that we can sort our users
+
+```java
+@Entity
+@Table(name="user")
+public class User implements Comparable<User> {
+	@Id
+	private Integer id;
+	private String name;
+	private String email;
+
+  @Override
+	public int compareTo(User user) {
+		//
+		return this.id.compareTo(user.id);
+	}
+```
+
+##### Services Layer
+
+We then create the POJO and POJI. We create the interfaces for UserDao and UserService and we create the class for the implementations UserDaoImpl, UserServiceImpl.
+
+The UserDaoImpl is annotated with **@Repository** since it will be doing the database work. The UserServiceImpl depends on (has a) UserDao.
+
+```java
+@Repository
+public class UserDaoImpl implements UserDao {
+  @Autowired
+	private HibernateTemplate hibernateTemplate;
+
+	public HibernateTemplate getHibernateTemplate() {
+		return hibernateTemplate;
+	}
+
+	public void setHibernateTemplate(HibernateTemplate hibernateTemplate) {
+		this.hibernateTemplate = hibernateTemplate;
+	}
+}
+```
+
+```java
+public class UserServiceImpl implements UserService {
+	@Autowired
+	private UserDao dao;
+```
+
+##### Controller Layer
+
+The Controller class depends on (has a) User Service.
+
+```java
+@Controller
+public class UserController {
+	@Autowired
+	private UserService service;
+```
+
+##### Implementing DAO and Service methods
+
+We now proceed on implementing the methods for the DAO and Service implementations. We first add a **create** and **findUsers** method in our UserDaoImpl.
+
+```java
+@Repository
+public class UserDaoImpl implements UserDao {
+
+	@Autowired
+	private HibernateTemplate hibernateTemplate;
+
+	@Override
+	public int create(User user) {
+		Integer result = (Integer) hibernateTemplate.save(user);
+		return result;
+	}
+
+  @Override
+	public List<User> findUsers() {
+		return hibernateTemplate.loadAll(User.class);
+	}
+```
+
+In our Service layer, we mark our methods with **@Transactional**
+
+```java
+@Service
+public class UserServiceImpl implements UserService {
+
+	@Autowired
+	private UserDao dao;
+
+	@Override
+	@Transactional
+	public int save(User user) {
+		// Business logic
+		return dao.create(user);
+	}
+
+  @Override
+		public List<User> getUsers() {
+		List<User> users = dao.findUsers();
+		Collections.sort(users);
+		return users;
+```
+
+##### Controller Methods and Views
+
+We create our controller for `/registerUser` and `/getUsers`
+
+```java
+@Controller
+public class UserController {
+	@Autowired
+	private UserService service;
+
+	@RequestMapping("registrationPage")
+	public String showRegistrationPage() {
+		return "userReg";
+	}
+
+	@RequestMapping(value="registerUser", method=RequestMethod.POST)
+	public String registerUser(@ModelAttribute("user") User user, ModelMap model) {
+		int result = service.save(user);
+		model.addAttribute("result", "User Created with Id" + result);
+		return "userReg";
+	}
+
+  @RequestMapping("getUsers")
+	public String getUsers(ModelMap model) {
+		List<User> users = service.getUsers();
+		model.addAttribute("users", users);
+		return "displayUsers";
+	}
+```
+
+For the views, we add the following in our userReg.jsp:
+
+```jsp
+<body>
+	<form action="registerUser" method="post">
+		<pre>
+	Id: <input type="text" name="id" />
+	Name: <input type="text" name="name" />
+	Email: <input type="text" name="email" />
+	<input type="submit" name="register" />
+	</pre>
+	</form>
+
+	<br/>${result}
+</body>
+```
+
+For `/getUsers`, we make use of JSTL tags for displaying the list of users. We need to add the following in our web.xml:
+
+```xml
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+          http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+    version="3.0">
+```
+
+In our pom.xml, we add the following dependencies:
+
+```xml
+	<dependency>
+		<groupId>jstl</groupId>
+		<artifactId>jstl</artifactId>
+		<version>1.2</version>
+	</dependency>
+	<dependency>
+		<groupId>taglibs</groupId>
+		<artifactId>standard</artifactId>
+		<version>1.1.2</version>
+	</dependency>
+```
+
+And add the following taglib directives in displayUsers.jsp:
+
+```jsp
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+```
+
+Using the _forEach_ core tag, we can loop through the _users_ object from our UserController.
+
+```jsp
+	<table border="1">
+		<tr>
+			<th>id</th>
+			<th>name</th>
+			<th>email</th>
+		</tr>
+		<c:forEach items="${users}" var="user">
+			<tr>
+				<td>${user.id}</td>
+				<td>${user.name}</td>
+				<td>${user.email}</td>
+			</tr>
+		</c:forEach>
+	</table>
+```
+
+## Spring MVC and AJAX using jQuery
