@@ -1983,3 +1983,83 @@ Using the _forEach_ core tag, we can loop through the _users_ object from our Us
 ```
 
 ## Spring MVC and AJAX using jQuery
+
+The 2 ways a web client communicates to an application web server are Synchronous and Asynchronous. In synchronous, the client waits for a response after sending a request. This means that an action cannot be performed before receiving a request. AJAX makes asynchronous possible.
+
+In this case, we will implement input validation. We will first need to implement the backend validation, wherein the controller will be called from the UI through an AJAX call using jQuery and finally we will handle the response and check if the input id is already present in the database.
+
+Before doing this, we need to implement the DAO and Service layer methods.
+
+```java
+@Repository
+public class UserDaoImpl implements UserDao {
+  ...
+	@Override
+	public User findUser(Integer id) {
+		return hibernateTemplate.get(User.class, id);
+	}
+}
+```
+
+```java
+@Service
+public class UserServiceImpl implements UserService {
+  ...
+	@Override
+	public User getUser(Integer id) {
+		return dao.findUser(id);
+	}
+}
+```
+
+Afterwards we can now implement the UserController method. This method will check in the database if the _id_ already exists. We need to use the **@ResponseBody** annotation to tell Spring that whatever we are returning from the method _validateEmail_ should be used in the response body and should not be resolved for a view name.
+
+```java
+	@RequestMapping("validateEmail")
+	public @ResponseBody String validateEmail(@RequestParam("id") int id) {
+		User user = service.getUser(id);
+		String msg = "";
+		// validation failed, id already exists in the database
+		if (user!=null ) {
+			msg = id + " already exists";
+		}
+		return msg;
+	}
+```
+
+For the front end, we use jQuery to make the ajax call.
+
+```jsp
+<script
+	src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+	integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
+	crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+	$(document).ready(function() {
+		$("#id").change(function() {
+			console.log($("#id").val())
+			$.ajax({
+				url : "validateEmail",
+				data : {
+					id : $("#id").val()
+				},
+				success : function(responseText) {
+					$("#errMsg").text(responseText)
+
+					if (responseText != "") {
+						$("#id").focus();
+					}
+				}
+			})
+		})
+	});
+</script>
+```
+
+A concise summary of what happens is:
+
+1. Ajax call is made from the browser
+2. Controller calls services layer
+3. Services layer calls the DAO
+4. DAO uses hibernate, makes a database call
+5. Checks that database already have existing id
