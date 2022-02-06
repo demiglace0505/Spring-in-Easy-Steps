@@ -2234,3 +2234,193 @@ Running the test program would print out:
 > Before calling the method
 > After method execution
 > 20
+
+## Java Configuration
+
+Starting with Spring 3.0, we can configure Spring without XML. We will be creating a java class **MyConfig** which we will annotate with **@Configuration**. Within this class, we will be defining multiple methods which will return the instances of our beans.
+
+We start by creating the Dao object and the Service object. The Service object depends on the Dao, hence it is autowired.
+
+```java
+@Component
+public class Dao {
+	public void create() {
+		System.out.println("created");
+	}
+}
+```
+
+```java
+public class Service {
+	@Autowired
+	Dao dao;
+
+	public void save() {
+		dao.create();
+	}
+
+  public void init() {
+		System.out.println("init()");
+	}
+
+	public void destroy() {
+		System.out.println("destroy()");
+}
+```
+
+We can then proceed on using Java Configuration. We use the **@Configuration** annotation, and the **@Beans** annotation to the methods that will return instances of the beans.
+
+```java
+@Configuration
+public class SpringConfig {
+	@Bean
+	public Dao dao() {
+		return new Dao();
+	}
+
+	@Bean
+	public Service service() {
+		return new Service();
+	}
+}
+```
+
+The next step is to create the Test class that will use the **AnnotationConfigApplicationContext**, the standalone Spring container that can read our Java configuration.
+
+```java
+public class Test {
+	public static void main(String[] args) {
+		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(SpringConfig.class);
+		Service dao = context.getBean(Service.class);
+		dao.save();
+    context.close();
+	}
+}
+```
+
+The basic flow of the application is the following:
+
+1. Container starts
+2. The SpringConfig file is checked and create the beans for Service and Dao
+3. The Dao bean is created and then injected to the autowired Service bean
+4. The Service bean is retrieved in the test class and invokes the save() method.
+
+#### Importing Configurations
+
+We can spread out the Spring configuration through multiple files. We can separate configuration for the Dao into its own class:
+
+```java
+@Configuration
+public class DaoConfig {
+	@Bean
+	public Dao dao() {
+		return new Dao();
+	}
+}
+```
+
+and using the **@Import** annotation, we can import it to the SpringConfig.java class
+
+```java
+@Configuration
+@Import(DaoConfig.class)
+public class SpringConfig {
+	@Bean
+	public Service service() {
+		return new Service();
+	}
+}
+```
+
+#### Life Cycle Callbacks
+
+We can also configure Life Cycle callbacks using Java Configuration. We can do this by defining attributes to the **@Bean** annotation. This will call the _init()_ and _destroy()_ methods of our Service class.
+
+```java
+@Configuration
+@Import(DaoConfig.class)
+public class SpringConfig {
+	@Bean(initMethod = "init", destroyMethod = "destroy")
+	public Service service() {
+		return new Service();
+	}
+}
+```
+
+## Java Configuration for Web Applications
+
+To use Java Configuration instead of web.xml for web applications, we need to extend **WebApplicationInitializer**. We will also create a SpringConfig that extends **WebMvcConfigurerAdapter**.
+
+We will configure the internal view resolver using the **@EnableWebMvc** that is equivalent to `<mvc:annotation-driven/>`, **@ComponentScan** that is equivalent to `<context:component-scan/>`, and finally **@Configuration** to define beans in our Spring Configuration.
+
+#### Migrating a project
+
+To migrate our existing _springmvc_ project from section 16, we need to follow 3 steps:
+
+1. Update pom.xml
+2. Replace dispatcher-servlet.xml with the Java Configuration
+3. Remove web.xml and create a class that implements WebApplicationInitializer
+
+We first update pom.xml with **javax.servlet-api** dependency and **maven-war-plugin**.
+
+```xml
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>javax.servlet-api</artifactId>
+			<version>3.1.0</version>
+			<scope>provided</scope>
+		</dependency>
+
+    ...
+
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-war-plugin</artifactId>
+					<version>3.3.1</version>
+					<configuration>
+						<warSourceDirectory>src/main/webapp</warSourceDirectory>
+						<warName>springmvc</warName>
+						<failOnMissingWebXml>false</failOnMissingWebXml>
+					</configuration>
+				</plugin>
+```
+
+We then proceed on the second step which is setting up the Java Configuration to replace our dispatcher-servlet.xml. In the dispatcher-servlet.xml, we currently have a _context:component-scan_ and bean for InternalResourceViewResolver. This can be achieved with Java configuration using the following annotations and extending from **WebMvcConfigurerAdapter**. The packages that will be scanned are passed into the **@ComponentScan** annotation.
+
+```java
+@EnableWebMvc
+@ComponentScan("com.demiglace.spring.springmvc.controller")
+@Configuration
+public class SpringConfig extends WebMvcConfigurerAdapter {
+	@Bean
+	public ViewResolver viewResolver() {
+		InternalResourceViewResolver resolver = new InternalResourceViewResolver();
+		resolver.setPrefix("/WEB-INF/views/");
+		resolver.setSuffix(".jsp");
+		return resolver;
+	}
+
+	@Override
+	public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
+		configurer.enable();
+	}
+}
+```
+
+The final step is creating the class that implements WebApplicationInitializer that will replace web.xml. We also need to configure the Dispatcher Servlet dynamically.
+
+```java
+public class WebServletConfiguration implements WebApplicationInitializer {
+	@Override
+	public void onStartup(ServletContext servletContext) throws ServletException {
+		AnnotationConfigWebApplicationContext webContext = new AnnotationConfigWebApplicationContext();
+		webContext.register(SpringConfig.class);
+
+		ServletRegistration.Dynamic servlet = servletContext.addServlet("dispatcher", new DispatcherServlet(webContext));
+		servlet.setLoadOnStartup(1);
+		servlet.addMapping("/");
+	}
+}
+```
+
+## Spring Boot
