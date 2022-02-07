@@ -2424,3 +2424,118 @@ public class WebServletConfiguration implements WebApplicationInitializer {
 ```
 
 ## Spring Boot
+
+Spring Boot is a Spring module that we can use to speed up Spring application development. Spring Boot uses _convention over configuration_. Spring Boot also comes with _opinionated defaults_ which means that it comes with default properties, and lastly, Spring Boot does not need XML configurations. **@SpringBootApplication** merges multiple annotations into one and simplifies usage of annotations such as @Configuration, @EnableAutoConfiguration, @ComponentScan.
+
+Spring Boot comes with many starter projects such as **spring-boot-starter** maven dependency that includes all the necessary JAR files to build a standalone Spring application. The same goes for **spring-boot-starter-web** for a web mvc application. **spring-boot-starter-data-jpa** can be used if we need to use JPA using hibernate. **spring-boot-starter-data-rest** can be used for REST apis. We can find more starters in this [repo](https://github.com/spring-projects/spring-boot/tree/main/spring-boot-project/spring-boot-starters)
+
+#### Creating a Spring Boot project
+
+There are four ways to create a Spring Boot project:
+
+1. Create a maven project and add the starter dependencies
+2. Using Spring Initializr
+3. Using IDE (STS/IntelliJ)
+4. Using Spring Boot CLI
+
+## Spring Data JPA
+
+Java Persistence API is a standard from Oracle for doing object relational mapping, that is for storing our objects into database and converting them into objects. Everytime we create a Java EE application and create a DAL, we create a repository/DAO class and implement CRUD methods. To perform CRUD operations, we simply create an interface that extends the **CRUDRepository** interface from Spring.
+
+The necessary dependencies for this example project are **Spring Data JPA** and **MySQL Driver**. We start by creating a JPA entity class for Product. We annotate this with **@Entity**.
+
+```java
+@Entity
+public class Product {
+	@Id
+	private Long id;
+	private String name;
+	private String description;
+	private double price;
+```
+
+We then proceed on creating the repository interface for performing the CRUD operations. This interface should extend the **CrudRepository** interface from Spring. The CrudRepository is a generic repository which can take a class, in this case, Product and the type of id will be Long.
+
+```java
+public interface ProductRepository extends CrudRepository<Product, Long> {
+
+}
+```
+
+We then need to configure the DataSource for our application. Spring Boot allows us to do this without writing XML or Java configurations through `application.properties`
+
+```
+spring.datasource.name=mydatabase
+spring.datasource.url=jdbc:mysql://localhost:3306/mydb
+spring.datasource.username=root
+spring.datasource.password=1234
+```
+
+#### Create
+
+We can start writing out the tests for CREATE operations. We need to first inject the **ApplicationContext** and add **@Autowired**
+
+```java
+@SpringBootTest
+class SpringdatajpaApplicationTests {
+	@Autowired
+	ApplicationContext context;
+
+	@Test
+	public void saveProduct() {
+		ProductRepository repository = context.getBean(ProductRepository.class);
+		//CREATE
+		Product product = new Product();
+		product.setId(1L);
+		product.setName("Legion 5");
+		product.setDescription("Gaming Laptop");
+		product.setPrice(199d);
+		repository.save(product);
+		// READ
+		Optional<Product> productOptional = repository.findById(1L);
+		System.out.println(productOptional);
+		// UPDATE
+		if (productOptional.isPresent()) {
+			Product productToUpdate = productOptional.get();
+			productToUpdate.setPrice(1500d);
+			repository.save(productToUpdate);
+		}
+		//FIND ALL
+		repository.findAll().forEach(p->{System.out.println(p.getPrice());});
+	}
+}
+```
+
+#### Custom Finder Methods
+
+We can create a method in our Repository class with a syntax **findBy(Name)**, and at run time, Spring Data will automatically generate the query and return the results back. We don't need to manually write the logic for these methods anymore. More information can be found in the [Spring Data documentation](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#jpa.query-methods.query-creation)
+
+In our case, our table for Products have columns for name and price. We can use these for custom finder methods.
+
+```java
+public interface ProductRepository extends CrudRepository<Product, Long> {
+	List<Product> findByName(String name);
+	List<Product> findByPrice(Double price);
+
+	List <Product> findByNameAndPrice(String name, Double price);
+}
+```
+
+The basic flow of the application is the following:
+
+1. The Spring Boot application starts up and scans through all the repositories and entities
+2. Spring Boot scans through the class path and knows that we are using MySQL Spring Data jars.
+3. It will create the database connections on the fly using the application.properties we provided
+4. Creates implementations of the ProductRepository on the fly and invokes methods from CrudRepository interface and executes the appropriate SQL statements
+
+## Spring Boot Web
+
+---
+
+Optional<Student> studentOptional = findById(studentId)
+if (studentOptional.isPresent()) {
+Student student = studentOptional.get()
+}
+
+@Id
+@GeneratedValue(strategy=GenerationType.IDENTITY)
