@@ -2,51 +2,51 @@
 
 [https://www.udemy.com/course/springframeworkineasysteps/](https://www.udemy.com/course/springframeworkineasysteps/)
 
-### [Spring Core Concepts](#spring-core-concepts)
+### [Spring Core Concepts](#spring-core-concepts-1)
 
-### [Life Cycle Methods](#life-cycle-methods)
+### [Life Cycle Methods](#life-cycle-methods-1)
 
-### [Dependency Check, Inner Beans and Scopes](#dependency-check-inner-beans-and-scopes)
+### [Dependency Check, Inner Beans and Scopes](#dependency-check-inner-beans-and-scopes-1)
 
-### [Constructor Injection](#constructor-injection)
+### [Constructor Injection](#constructor-injection-1)
 
-### [Bean Externalization](#bean-externalization)
+### [Bean Externalization](#bean-externalization-1)
 
-### [Auto-Wiring](#auto-wiring)
+### [Auto-Wiring](#auto-wiring-1)
 
-### [Standalone Collections](#standalone-collections)
+### [Standalone Collections](#standalone-collections-1)
 
-### [Stereotype Annotations](#stereotype-annotations)
+### [Stereotype Annotations](#stereotype-annotations-1)
 
-### [Spring Expression Language](#spring-expression-language)
+### [Spring Expression Language](#spring-expression-language-1)
 
-### [Injecting Interfaces](#injecting-interfaces)
+### [Injecting Interfaces](#injecting-interfaces-1)
 
-### [Spring JDBC](#spring-jdbc)
+### [Spring JDBC](#spring-jdbc-1)
 
-### [Spring MVC](#spring-mvc)
+### [Spring MVC](#spring-mvc-1)
 
-### [Sending Data from Controller to UI](#sending-data-from-controller-to-ui)
+### [Sending Data from Controller to UI](#sending-data-from-controller-to-ui-1)
 
-### [Sending Data from UI to Controller](#sending-data-from-ui-to-controller)
+### [Sending Data from UI to Controller](#sending-data-from-ui-to-controller-1)
 
-### [Spring MVC and ORM](#spring-mvc-and-orm)
+### [Spring MVC and ORM](#spring-mvc-and-orm-1)
 
-### [Spring MVC and AJAX using jQuery](#spring-mvc-and-ajax-using-jquery)
+### [Spring MVC and AJAX using jQuery](#spring-mvc-and-ajax-using-jquery-1)
 
-### [Spring AOP](#spring-aop)
+### [Spring AOP](#spring-aop-1)
 
-### [Java Configuration](#java-configuration)
+### [Java Configuration](#java-configuration-1)
 
-### [Java Configuration for Web Applications](#java-configuration-for-web-applications)
+### [Java Configuration for Web Applications](#java-configuration-for-web-applications-1)
 
-### [Spring Boot](#spring-boot)
+### [Spring Boot](#spring-boot-1)
 
-### [Spring Data JPA](#spring-data-jpa)
+### [Spring Data JPA](#spring-data-jpa-1)
 
-### [Spring Boot Web](#spring-boot-web)
+### [Spring Boot Web](#spring-boot-web-1)
 
-### [Creatomg RESTful Web Services](#creating-restful-web-services)
+### [Creatomg RESTful Web Services](#creating-restful-web-services-1)
 
 ## Spring Core Concepts
 
