@@ -1,6 +1,63 @@
 # Spring in Easy Steps
 
-### Steps for DI
+[https://www.udemy.com/course/springframeworkineasysteps/](https://www.udemy.com/course/springframeworkineasysteps/)
+
+[Spring Core Concepts](#spring-core-concepts)
+[Life Cycle Methods](#life-cycle-methods)
+[Dependency Check, Inner Beans and Scopes](#dependency-check-inner-beans-and-scopes)
+[Constructor Injection](#constructor-injection)
+[Bean Externalization](#bean-externalization)
+[Auto-Wiring](#auto-wiring)
+[Standalone Collections](#standalone-collections)
+[Stereotype Annotations](#stereotype-annotations)
+[Spring Expression Language](#spring-expression-language)
+[Injecting Interfaces](#injecting-interfaces)
+[Spring JDBC](#spring-jdbc)
+[Spring MVC](#spring-mvc)
+[Sending Data from Controller to UI](#sending-data-from-controller-to-ui)
+[Sending Data from UI to Controller](#sending-data-from-ui-to-controller)
+[Spring MVC and ORM](#spring-mvc-and-orm)
+[Spring MVC and AJAX using jQuery](#spring-mvc-and-ajax-using-jquery)
+[Spring AOP](#spring-aop)
+[Java Configuration](#java-configuration)
+[Java Configuration for Web Applications](#java-configuration-for-web-applications)
+[Spring Boot](#spring-boot)
+[Spring Data JPA](#spring-data-jpa)
+[Spring Boot Web](#spring-boot-web)
+[Creatomg RESTful Web Services](#creating-restful-web-services)
+
+## Spring Core Concepts
+
+Spring is a **Dependency Injection** framework and complements the Java EE standard. A Java EE application is typically organized into layers: UI, Services, Data Access Layer, DB, in order. Each layer uses the services of the layers provided below. For erxample: OrderController -> OrderService -> OrderDAO. Spring will automatically create the OrderDAO and inject it into OrderService, and create OrderService and inject it into OrderController.
+
+When we develop software applications, we organize our code accross classes. In the instance wherein one class (A) depends on another class (B), instead of us creating an object of class B within class A, we delegate the responsibility to Spring. Spring at runtime will create an object of class B and inject it into class A. This is called **Inversion of Control**, a design pattern wherein we give the object creation control from our application code to the external framework/container.
+
+```java
+class A {
+  B b;
+  doAStuff() {
+    b.doBStuff();
+  }
+}
+
+class B{
+  doBStuff(){
+
+  }
+}
+```
+
+#### Spring Container
+
+The Spring Container is responsible for creating the objects, holding them in memory, and injecting them to another object as required. It maintains the complete lifecycle of an object from creation to destruction. The two things needed by the container are **Beans** which are the Java classes and **XML Config** through which we tell the container what dependencies are needed for a particular object. We access the container through the **ApplicationContext** interface from Spring.
+
+#### Types of Dependency Injection
+
+**Setter Injection** or Property Injection is where we provide the getter and setter methods for the fields on our objects. Spring Container will create those dependencies and use the set methods on the object to set the values.
+
+**Constructor Injection** is where we provide a parameterized constructor and Spring will invoke the constructor at runtime when it creates an object.
+
+#### Steps for DI
 
 We first create a POJO Employee.java file which contains the getters and setters.
 
@@ -64,11 +121,11 @@ public class Test {
 }
 ```
 
-## Setter Injection
+#### Setter Injection
 
 Setter Injection is the process of the Spring Container to using setter methods to do dependency injection. The steps are creating the Spring Beans (POJO), creating the Spring configuration file and using the Spring Bean from the container
 
-### Collection Injection
+#### Collection Injection
 
 We can also use Dependency Injection on Collections such as list, map, set and properties.
 
@@ -163,7 +220,7 @@ public class Test {
 }
 ```
 
-### Map
+#### Map
 
 For Maps, we start with a POJO
 
