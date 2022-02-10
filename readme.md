@@ -2530,12 +2530,55 @@ The basic flow of the application is the following:
 
 ## Spring Boot Web
 
----
+The dependency needed for a Spring Boot Web MVC is **spring-boot-starter-web**. This comes with an embedded Tomcat without needing to create a WAR file or deploying to a server. We also do not need to configure manually the Dispatcher Servlet and Internal View Resolver. We can configure the Internal View Resolver using application.properties instead.
 
-Optional<Student> studentOptional = findById(studentId)
-if (studentOptional.isPresent()) {
-Student student = studentOptional.get()
+We start by creating our Controller class.
+
+```java
+@Controller
+public class HelloController {
+	@RequestMapping("/hello")
+	@ResponseBody
+	public String hello(@RequestParam String name) {
+		return "Hello " + name;
+	}
 }
+```
 
-@Id
-@GeneratedValue(strategy=GenerationType.IDENTITY)
+At this point, we can run the project as a Spring Boot project, and it will automatically initialize Tomcat at port 8080. We can simply go to `http://localhost:8080/hello?name=doge` to see our app running.
+
+## Creating RESTful Web Services
+
+For this section, we continue on from **Spring-Data-JPA** section.
+
+We start by creating our Controller class. We annotate our Controller class with the **@RestController** annotation and then define a root path for our controller with **@RequestMapping**. We Autowire our repository and then proceed to define our CRUD methods. We use the _ProductRepository_ class from Spring-Data-JPA section which extends on CrudRepository.
+
+```java
+@RestController
+@RequestMapping("/products")
+public class ProductController {
+	@Autowired
+	ProductRepository repository;
+
+	@GetMapping
+	public Iterable<Product> getProducts(){
+		return repository.findAll();
+	}
+
+	@GetMapping("/{id}")
+	public Optional<Product> getProduct(@PathVariable Long id) {
+		Optional<Product> productOptional = repository.findById(id);
+		return productOptional;
+	}
+
+	@PostMapping
+	public Product create(@RequestBody Product product) {
+		return repository.save(product);
+	}
+
+	@PutMapping
+	public Product update(@RequestBody Product product) {
+		return repository.save(product);
+	}
+}
+```
